@@ -62,7 +62,7 @@ class InstagramBot():
         time.sleep(1) # опциональная задержка
         post_urls = [post.get_attribute('href') for post in posts] # формируем список url адресов постов
 
-        self.put_likes_to_posts(post_urls) # ставим лайки постам
+        self.put_likes_to_posts(post_urls[:3]) # ставим лайки постам
 
     def put_likes_to_user_posts(self, user: str):
         """Ставит лайки на посты пользователя
@@ -173,11 +173,91 @@ class InstagramBot():
             for liked_post in all_liked_posts:
                 f.write(liked_post + '\n')
 
+    def get_user_liked_posts(self, username: str):
+        """Возвращает все пролайканные посты пользователя
+
+        Args:
+            username (str): имя пользователя
+
+        Returns:
+            list: список пролайканных постов, которые находятся в каталоге пользователя
+        """
+        liked_posts = []
+        with open(f'{username}/liked_posts.txt') as f:
+            for post in f.readlines():
+                if post != '\n':
+                    liked_posts.append(post.strip('\n'))
+        return liked_posts
+
+    def take_user_likes_back(self, user: str):
+        """Убирает все поставленные лайки под постами пользователя
+
+        Args:
+            user (str): url-адрес пользователя
+        """
+        username = user.split('/')[-2] # получаем имя пользователя из url-адреса
+        user_liked_posts = self.get_user_liked_posts(username) # получаем все пролайканные посты пользователя
+        
+        path = os.path.join(os.path.abspath(os.path.dirname(__file__)), f'{username}\liked_posts.txt') # формируем путь к файлу с лайкнутыми постами пользователя
+        os.remove(path) # удаляем файл
+
+        # считываем все когда-либо сохраненные лайкнутые посты
+        with open('all_liked_posts.txt') as f:
+            all_liked_posts = f.read()
+
+        # пробегаемся по всем лайкнутым постам и удаляем те, что есть в списке лайкнутых постов пользователя
+        for post in user_liked_posts:
+            all_liked_posts = all_liked_posts.replace(post, '')
+                
+            self.driver.get(post) # переходим на странцу поста
+            time.sleep(2) # подгрузка поста
+
+            print(f'Убираем лайк с поста {post}...')
+            like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
+            like_button.click()
+
+        # обновляем файл
+        with open('all_liked_posts.txt', 'w') as f:
+            f.write(all_liked_posts)
+
+    def get_liked_posts(self):
+        """Возвращает все пролайканные посты"""
+        liked_posts = []
+        with open('all_liked_posts.txt') as f:
+            for post in f.readlines():
+                if post != '\n':
+                    liked_posts.append(post.strip('\n'))
+        return liked_posts
+
+    def take_all_likes_back(self):
+        """Удаляет все поставленные где-либо лайки"""
+        liked_posts = self.get_liked_posts() # получаем все пролайканные посты
+
+        # считываем пролайканные посты из файла для его дальнейшего редактирования
+        with open('all_liked_posts.txt') as f:
+            lines = f.read()
+
+        for post in liked_posts:
+            # затираем пост в файле
+            if post in lines:
+                lines = lines.replace(post, '')
+
+            # убираем лайк
+            self.driver.get(post)
+            time.sleep(2)
+
+            print(f'Убираем лайк с поста {post}...')
+            like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
+            like_button.click()
+
+        # обновляем файл
+        with open('all_liked_posts.txt', 'w') as f:
+            f.write(lines)
+
 def main():
     driver = webdriver.Firefox()
     bot = InstagramBot(driver)
-    bot.login(config.USERNAME, config.PASSWORD)
-    bot.put_likes_to_user_posts('https://www.instagram.com/python2day/')
+    
 
 if __name__ == '__main__':
     main()
