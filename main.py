@@ -64,6 +64,49 @@ class InstagramBot():
 
         self.put_likes_to_posts(post_urls) # ставим лайки постам
 
+    def put_likes_to_user_posts(self, user: str):
+        """Ставит лайки на посты пользователя
+
+        Args:
+            user (str): url-адрес пользователя
+        """
+        self.driver.get(user) # открываем страницу пользователя
+        username = user.split('/')[-2] # получаем имя пользователя из url-адреса его страницы
+
+        posts_count = int(self.driver.find_element_by_xpath("//span[@class='g47SY ']").text) # получаем кол-во постов
+        iteration_count = posts_count // 12 # получаем кол-во итераций. 12 - число подгружаемых постов
+
+        post_urls = []
+
+        # собираем посты пользователя
+        for i in range(iteration_count+1):
+            posts = self.driver.find_elements_by_xpath("//div[@class='v1Nh3 kIKUG _bz0w']/a") # получаем посты на n-ой итерации
+            time.sleep(1)
+            for post in posts:
+                post_urls.append(post.get_attribute('href')) # сохраняем url-адреса постов с n-ой итерации в список всех постов
+
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # прокрутка страницы
+            time.sleep(3)
+            print(f'Итерация №{i+1}')
+
+        post_urls = list(set(post_urls[:3])) # из за несовершенства механизма прокрутки страницы некоторые посты продублировались, поэтому превращаем их в множество, а затем в список
+
+        self.write_posts_to_file(username, post_urls)
+
+        self.put_likes_to_posts(post_urls, username)
+
+    def write_posts_to_file(self, username: str, posts: list):
+        """Сохраняет посты пользователя
+
+        Args:
+            username (str): имя пользователя
+            posts (list): список найденных постов пользователя
+        """
+        
+        with open(f'{username}.txt', 'a') as f:
+            for post in posts:
+                f.write(post + '\n')
+
     def put_likes_to_posts(self, posts: list, username: str = None):
         """Ставит лайки на все переданные посты, затем сохраняет пролайканные посты
 
@@ -73,7 +116,7 @@ class InstagramBot():
         """
         all_liked_posts = []
 
-        for post in posts[:3]:
+        for post in posts:
             self.put_like_to_post(post)
             all_liked_posts.append(post) # добавляем пост в список пролайкнных постов, чтобы потом за один раз записать все посты в файл
             time.sleep(2) # 90 - рекомендуемая задержка для избежания бана со стороны instagram
@@ -102,7 +145,15 @@ class InstagramBot():
         like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
         like_button.click()
 
-    def is_user_path_exists(username: str):
+    def save_all_user_liked_post(self, all_liked_posts: list, username: str):
+        """Сохраняет все пролайканные посты пользователя"""
+        self.is_user_path_exists(username)
+
+        with open(f'{username}/liked_posts.txt', 'a') as f:
+            for liked_post in all_liked_posts:
+                f.write(liked_post + '\n')
+    
+    def is_user_path_exists(self, username: str):
         """Проверяет, существует ли каталог с переданным именем пользователя. Если нет - создает его
 
         Args:
@@ -111,14 +162,6 @@ class InstagramBot():
         if not os.path.exists(username):
             print(f'\nСоздаем папку пользователя {username}...\n')
             os.mkdir(username)
-
-    def save_all_user_liked_post(self, all_liked_posts: list, username: str):
-        """Сохраняет все пролайканные посты пользователя"""
-        self.is_user_path_exists(username)
-
-        with open(f'{username}/liked_posts.txt', 'a') as f:
-            for liked_post in all_liked_posts:
-                f.write(liked_post + '\n')
 
     def save_all_liked_post(self, all_liked_posts: list):
         """Сохраняет все пролайканные где-либо посты
@@ -134,7 +177,7 @@ def main():
     driver = webdriver.Firefox()
     bot = InstagramBot(driver)
     bot.login(config.USERNAME, config.PASSWORD)
-    bot.like_posts_by_hashtags('https://www.instagram.com/explore/tags/bmw/')
+    bot.put_likes_to_user_posts('https://www.instagram.com/python2day/')
 
 if __name__ == '__main__':
     main()
