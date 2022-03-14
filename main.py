@@ -34,7 +34,7 @@ class InstagramBot():
         password_input.send_keys(password)  
         # password_input.send_keys(Keys.ENTER) # симуляция нажатия на enter
 
-        login_button = self.driver.find_element_by_xpath("//button[@class='sqdOP  L3NKy   y3zKF     ']/div")
+        login_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/article/div[2]/div[1]/div/form/div/div[3]/button")
         login_button.click()
         time.sleep(5)
 
@@ -58,7 +58,7 @@ class InstagramBot():
 
         print('\n')
 
-        posts = self.driver.find_elements_by_xpath("//div[@class='v1Nh3 kIKUG _bz0w']/a") # собираем все прогруженные посты
+        posts = self.driver.find_elements_by_xpath("//div/a") # собираем все прогруженные посты
         time.sleep(1) # опциональная задержка
         post_urls = [post.get_attribute('href') for post in posts] # формируем список url адресов постов
 
@@ -73,14 +73,14 @@ class InstagramBot():
         self.driver.get(user) # открываем страницу пользователя
         username = user.split('/')[-2] # получаем имя пользователя из url-адреса его страницы
 
-        posts_count = int(self.driver.find_element_by_xpath("//span[@class='g47SY ']").text) # получаем кол-во постов
+        posts_count = int(self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[1]/span/span").text) # получаем кол-во постов
         iteration_count = posts_count // 12 # получаем кол-во итераций. 12 - число подгружаемых постов
 
         post_urls = []
 
         # собираем посты пользователя
         for i in range(iteration_count+1):
-            posts = self.driver.find_elements_by_xpath("//div[@class='v1Nh3 kIKUG _bz0w']/a") # получаем посты на n-ой итерации
+            posts = self.driver.find_elements_by_xpath("//div/a") # получаем посты на n-ой итерации
             time.sleep(1)
             for post in posts:
                 post_urls.append(post.get_attribute('href')) # сохраняем url-адреса постов с n-ой итерации в список всех постов
@@ -142,7 +142,7 @@ class InstagramBot():
         print(f'Ставим лайк на пост {post}...')
 
         # находим кнопку лайка и нажимаем на нее
-        like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
+        like_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/div/article/div[3]/section[1]/span[1]/button")
         like_button.click()
 
     def save_all_user_liked_post(self, all_liked_posts: list, username: str):
@@ -213,7 +213,7 @@ class InstagramBot():
             time.sleep(2) # подгрузка поста
 
             print(f'Убираем лайк с поста {post}...')
-            like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
+            like_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/div/article/div[3]/section[1]/span[1]/button")
             like_button.click()
 
         # обновляем файл
@@ -247,17 +247,93 @@ class InstagramBot():
             time.sleep(2)
 
             print(f'Убираем лайк с поста {post}...')
-            like_button = self.driver.find_element_by_xpath("//section[@class='ltpMr  Slqrh ']/span[@class='fr66n']/button[@class='wpO6b  ']")
+            like_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/div/article/div[3]/section[1]/span[1]/button")
             like_button.click()
 
         # обновляем файл
         with open('all_liked_posts.txt', 'w') as f:
             f.write(lines)
 
+    def subscribe_to_users(self, user: str):
+        """Подписывается на пользователей, которые находятся в подписках и в подписчиках у переданного пользователя
+
+        Args:
+            user (str): url-адрес пользователя
+        """
+        # заходим на страницу пользователя
+        self.driver.get(user)
+        time.sleep(1)
+
+        username = user.split('/')[-2] # получаем имя пользователя из Url-адреса
+
+        # подписка на переданного пользователя
+        # находим кнопку подписки и тыкаем на нее, иначе пользователь уже подписан
+        try:
+            subscribe_button = self.driver.find_element_by_class_name('jIbKX')
+            subscribe_button.click()
+            time.sleep(1)
+        except:
+            print(f'Вы уже подписаны на {username}')
+
+        # выпадающий список подписчиков пользователя
+        user_subscribers = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div")
+        user_subscribers.click()
+        time.sleep(2)
+
+        # получаем кол-во итераций
+        user_subscribers_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div/span").get_attribute('title')
+        iteration_count = int(user_subscribers_count.replace(',', '').replace(' ', '')) // 500 #12
+
+        user_subscribers_urls = []
+        subscribers_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[2]") # окно с подписчиками пользователя
+
+        for _ in range(iteration_count+1):
+            user_subscribers_hrefs = self.driver.find_elements_by_xpath('//div/span/a')
+            time.sleep(1)
+
+            # добавляем очередных подписчиков в список всех подписчиков
+            for user_subscriber in user_subscribers_hrefs[1:4]:
+                user_subscribers_urls.append(user_subscriber.get_attribute('href'))
+
+            # прокручиваем список подписчиков дальше
+            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribers_list)
+            time.sleep(2)
+
+        user_subscribers_urls = list(set(user_subscribers_urls)) # оставляем только уникальные значения
+
+        # подписка на найденных пользователей
+        for user_subscriber in user_subscribers_urls:
+            self.driver.get(user_subscriber) # переходим на страницу пользователя
+            time.sleep(2)
+
+            username = user_subscriber.split('/')[-2]
+
+            try:
+                closed_profile = self.driver.find_element_by_class_name('_4Kbb_') # уникальный класс для закрытых профилей
+            except:
+                closed_profile = False
+
+            if closed_profile:
+                try:
+                    subscribe_button = self.driver.find_element_by_class_name('/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/div/div/div/span/span[1]/button')
+                    subscribe_button.click()
+                    print(f'Вы подали заявку {username}')
+                    time.sleep(2)
+                except:
+                    print(f'Вы уже подали заявку {username}')
+            else:
+                try:
+                    subscribe_button = self.driver.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/div/div/div/span/span[1]/button')
+                    subscribe_button.click()
+                    print(f'Вы подписались на {username}')
+                    time.sleep(2)
+                except:
+                    print(f'Вы уже подписаны на {username}')
+
 def main():
     driver = webdriver.Firefox()
     bot = InstagramBot(driver)
-    
+
 
 if __name__ == '__main__':
     main()
