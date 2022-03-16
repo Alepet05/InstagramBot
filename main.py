@@ -450,10 +450,70 @@ class InstagramBot():
 
             print(f'Отписались от {username}')
 
+    def send_message_to_user(self, user: str, message: str):
+        """Отправляет сообщение пользователю
+
+        Args:
+            user (str): имя пользователя, которому нужно отправить сообщение
+            message (str): текст сообщения
+        """
+        self.driver.get('https://www.instagram.com')
+        time.sleep(3)
+
+        username = user.split('/')[-2]
+
+        self.disable_notifications()
+
+        direct_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/div/div[1]/div/div[3]/div/div[2]/a")
+        direct_button.click()
+        time.sleep(3)
+
+        self.disable_notifications()
+
+        send_message_button = self.driver.find_element_by_class_name('/html/body/div[1]/section/div/div[2]/div/div/div[2]/div/div[3]/div/button')
+        send_message_button.click()
+        time.sleep(3)
+
+        # ------------------
+        # for username in users: если хотим рассылать сообщения нескольким пользователям
+        user_input = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div[2]/div[1]/div/div[2]/input")
+        print('Вводим имя пользователя...')
+        user_input.send_keys(username)
+        time.sleep(3)
+
+        add_user = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div[2]/div[2]/div[1]")
+        add_user.click()
+        time.sleep(1)
+        # -----------------
+
+        next_button = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div[1]/div/div[3]/div/button/div")
+        next_button.click()
+        time.sleep(3)
+
+        self.disable_notifications()
+
+        message_placeholder = self.driver.find_element_by_xpath("/html/body/div[1]/section/div/div[2]/div/div/div[2]/div[2]/div/div[2]/div/div/div[2]/textarea")
+        print('Вводим текст сообщения...')
+        message_placeholder.send_keys(message)
+        message_placeholder.send_keys(Keys.ENTER)
+        time.sleep(2)
+
+    def disable_notifications(self):
+        """Отказывается от уведомлений"""
+        #time.sleep(3)
+        cancel_notification_button = self.driver.find_element_by_class_name('aOOlW')
+        cancel_notification_button.click()
+        time.sleep(3)
+
+    def close(self):
+        """Закрывает соединение"""
+        self.driver.close()
+        self.driver.quit()
+
 def main():
     driver = webdriver.Firefox()
     bot = InstagramBot(driver)
-    bot.unsubscribe_from_unsubscribed_users('https://www.instagram.com/__u53r_nam3__/')
+    bot.close()
 
 if __name__ == '__main__':
     main()
