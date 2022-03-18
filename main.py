@@ -15,8 +15,16 @@ class InstagramBot():
             driver (WebDriver): объект драйвера FireFox
         """
         self.driver = driver
-        self.driver.get('https://www.instagram.com')
-        time.sleep(5) # пауза для прогрузки главной страницы
+        self.load_page('https://www.instagram.com')
+
+    def load_page(self, url: str):
+        """Переходит на страницу по переданному url-адресу
+
+        Args:
+            url (str): url-адрес страницы
+        """
+        self.driver.get(url)
+        time.sleep(5)
 
     def login(self, username: str, password: str):
         """Аутентификация
@@ -45,8 +53,7 @@ class InstagramBot():
             hashtag (str): url страницы с заданным хештегом
         """
 
-        self.driver.get(hashtag_page) # получаем страницу с постами по заданному хештегу
-        time.sleep(3) # пауза для прогрузки контента страницы
+        self.load_page(hashtag_page) # получаем страницу с постами по заданному хештегу
 
         print('Собираем посты...\n')
 
@@ -70,7 +77,7 @@ class InstagramBot():
         Args:
             user (str): url-адрес пользователя
         """
-        self.driver.get(user) # открываем страницу пользователя
+        self.load_page(user) # открываем страницу пользователя
         username = user.split('/')[-2] # получаем имя пользователя из url-адреса его страницы
 
         posts_count = int(self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[1]/span/span").text) # получаем кол-во постов
@@ -136,8 +143,7 @@ class InstagramBot():
         Args:
             post (str): url-адрес поста
         """
-        self.driver.get(post) # получаем страницу поста
-        time.sleep(3) # прогрузка страницы поста
+        self.load_page(post) # получаем страницу поста
 
         print(f'Ставим лайк на пост {post}...')
 
@@ -209,8 +215,7 @@ class InstagramBot():
         for post in user_liked_posts:
             all_liked_posts = all_liked_posts.replace(post, '')
                 
-            self.driver.get(post) # переходим на странцу поста
-            time.sleep(2) # подгрузка поста
+            self.load_page(post) # переходим на странцу поста
 
             print(f'Убираем лайк с поста {post}...')
             like_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/div/article/div[3]/section[1]/span[1]/button")
@@ -243,8 +248,7 @@ class InstagramBot():
                 lines = lines.replace(post, '')
 
             # убираем лайк
-            self.driver.get(post)
-            time.sleep(2)
+            self.load_page(post)
 
             print(f'Убираем лайк с поста {post}...')
             like_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/div/article/div[3]/section[1]/span[1]/button")
@@ -255,16 +259,13 @@ class InstagramBot():
             f.write(lines)
 
     def subscribe_to_users(self, user: str):
-        """Подписывается на пользователей, которые находятся в подписках и в подписчиках у переданного пользователя
+        """Подписывается на пользователей, которые находятся в подписчиках у переданного пользователя
 
         Args:
             user (str): url-адрес пользователя
         """
         # заходим на страницу пользователя
-        self.driver.get(user)
-        time.sleep(1)
-
-        username = user.split('/')[-2] # получаем имя пользователя из Url-адреса
+        self.load_page(user)
 
         # подписка на переданного пользователя
         # находим кнопку подписки и тыкаем на нее, иначе пользователь уже подписан
@@ -273,6 +274,7 @@ class InstagramBot():
             subscribe_button.click()
             time.sleep(1)
         except:
+            username = user.split('/')[-2] # получаем имя пользователя из Url-адреса
             print(f'Вы уже подписаны на {username}')
 
         # выпадающий список подписчиков пользователя
@@ -282,7 +284,7 @@ class InstagramBot():
 
         # получаем кол-во итераций
         user_subscribers_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div/span").get_attribute('title')
-        iteration_count = int(user_subscribers_count.replace(',', '').replace(' ', '')) // 12 #12
+        iteration_count = int(user_subscribers_count.replace(',', '').replace(' ', '')) // 12 # 12 - число подгружаемых подписчиков
 
         user_subscribers_urls = []
         subscribers_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[2]") # окно с подписчиками пользователя
@@ -303,8 +305,7 @@ class InstagramBot():
 
         # подписка на найденных пользователей
         for user_subscriber in user_subscribers_urls:
-            self.driver.get(user_subscriber) # переходим на страницу пользователя
-            time.sleep(2)
+            self.load_page(user_subscriber) # переходим на страницу пользователя
 
             username = user_subscriber.split('/')[-2]
 
@@ -331,13 +332,12 @@ class InstagramBot():
                     print(f'Вы уже подписаны на {username}')
 
     def unsubscribe_from_all_users(self, user: str):
-        """Отписыка от всех пользователей
+        """Отписка от всех пользователей
 
         Args:
             user (str): url-адрес пользователя
         """
-        self.driver.get(user) # заходим на странцу пользователя
-        time.sleep(2)
+        self.load_page(user) # заходим на странцу пользователя
 
         subscribing_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div/span").text # кол-во подписок
         iteration_count = int(subscribing_count) // 12 # 12 - число подгружаемых подписчиков
@@ -345,11 +345,10 @@ class InstagramBot():
         # производится отписка от первых 12 найденных подписок
         # далее перезагружаем страницу и отписываемся от следующих 12 подписок
         for _ in range(iteration_count+1):
-            self.driver.get(user) # перегружаем страницу для генерации следующих подписок
-            time.sleep(2)
+            self.load_page(user) # перегружаем страницу для генерации следующих подписок
             
-            subscribing_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div") # ищем кнопку, вызывающую меню подписок
-            subscribing_button.click() # кликаем
+            subscribings = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div") # ищем кнопку, вызывающую меню подписок
+            subscribings.click() # кликаем
             time.sleep(3) # подгружаем подписки
 
             subscribings = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # находим аккаунты подписок
@@ -375,47 +374,42 @@ class InstagramBot():
         Args:
             user (str): url-адрес пользователя
         """
-        self.driver.get(user)
-        time.sleep(2)
+        self.load_page(user)
 
         subscribers_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div/span").get_attribute('title')
         iteration_count = int(subscribers_count) // 12
 
-        subscribers_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div")
-        subscribers_button.click()
+        subscribers = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div") # выпадающий список подписчиков
+        subscribers.click()
         time.sleep(3)
 
-        subscribers_list = self.driver.find_element_by_xpath('/html/body/div[6]/div/div/div/div[2]')
+        subscribers_list = self.driver.find_element_by_xpath('/html/body/div[6]/div/div/div/div[2]') # непосредственно сам список подписчиков как html-элемент, для его дальнейшей прокрутики для сбора всех подписчиков
         subscribers = []
 
         for _ in range(iteration_count+1):
-            subscribers = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li")
-            time.sleep(2)
+            subscribers = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # забираем всех подписчиков на текущей итерации прокрутки списка
             for subscriber in subscribers:
                 username = subscriber.find_element_by_class_name('FPmhX')
                 subscribers.append(username.text)
-            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribers_list)
+            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribers_list) # прокрутка списка подписчиков
             time.sleep(2)
 
-        subscribers = list(set(subscribers))
-        print(subscribers)
-        print(len(subscribers))
+        subscribers = list(set(subscribers)) # убираем дубликаты
 
-        self.driver.get(user)
-        time.sleep(2)
+        self.load_page(user) # перегружаем страницу
 
         subscribing_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div/span").text
         iteration_count = int(subscribing_count) // 12
 
-        subscribing_button = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div")
-        subscribing_button.click()
+        subscribings = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div") # выпадающий список подписок
+        subscribings.click()
         time.sleep(3)
 
-        subscribing_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[3]")
+        subscribing_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[3]") # неподсредстенно сам список подписок для его дальнейшей прокрутки
         unsubscribed_users = []
 
         for _ in range(iteration_count+1):
-            subscribings = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li")
+            subscribings = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # подписки на текущей итерации
             time.sleep(2)
             for subscribing in subscribings:
                 subscribing_info = subscribing.find_element_by_xpath("//span/a")
@@ -423,19 +417,16 @@ class InstagramBot():
                 if username not in subscribers:
                     unsubscribed_users.append(subscribing_info.get_attribute('href'))
 
-            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribing_list)
+            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribing_list) # прокрутка списка подписок
             time.sleep(2)
 
 
-        unsubscribed_users = list(set(unsubscribed_users))
-        print(unsubscribed_users)
-        print(len(unsubscribed_users))
+        unsubscribed_users = list(set(unsubscribed_users)) # убираем дубликаты
 
         for unsubscribed_user in unsubscribed_users:
             username = unsubscribed_user.split('/')[-2]
 
-            self.driver.get(unsubscribed_user)
-            time.sleep(2)
+            self.load_page(unsubscribed_user)
 
             print(f'{username} не подписался на нас в ответ. Отписываемся от него...')
 
@@ -457,8 +448,7 @@ class InstagramBot():
             user (str): имя пользователя, которому нужно отправить сообщение
             message (str): текст сообщения
         """
-        self.driver.get('https://www.instagram.com')
-        time.sleep(3)
+        self.load_page('https://www.instagram.com')
 
         username = user.split('/')[-2]
 
@@ -481,7 +471,7 @@ class InstagramBot():
         user_input.send_keys(username)
         time.sleep(3)
 
-        add_user = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div[2]/div[2]/div[1]")
+        add_user = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div[2]/div[2]/div[1]") # кнопка добавления пользователя
         add_user.click()
         time.sleep(1)
         # -----------------
@@ -495,11 +485,11 @@ class InstagramBot():
         message_placeholder = self.driver.find_element_by_xpath("/html/body/div[1]/section/div/div[2]/div/div/div[2]/div[2]/div/div[2]/div/div/div[2]/textarea")
         print('Вводим текст сообщения...')
         message_placeholder.send_keys(message)
-        message_placeholder.send_keys(Keys.ENTER)
+        message_placeholder.send_keys(Keys.ENTER) # нажимаем enter для отправки сообщения
         time.sleep(2)
 
     def disable_notifications(self):
-        """Отказывается от уведомлений"""
+        """Отказывается от всплывающих уведомлений"""
         #time.sleep(3)
         cancel_notification_button = self.driver.find_element_by_class_name('aOOlW')
         cancel_notification_button.click()
