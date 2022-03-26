@@ -2,9 +2,7 @@ import os
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.webdriver import WebDriver
-import config
 import time
-import requests
 
 
 class InstagramBot():
@@ -501,7 +499,7 @@ class InstagramBot():
         self.driver.quit()
 
 def main():
-    driver = webdriver.Firefox()
+    driver = webdriver.Firefox('chromedriver')
     bot = InstagramBot(driver)
     bot.close()
 
