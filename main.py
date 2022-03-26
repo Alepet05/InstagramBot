@@ -3,6 +3,7 @@ import config
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 import time
 
 
@@ -15,6 +16,8 @@ class InstagramBot():
         """
         self.driver = driver
         self.load_page('https://www.instagram.com')
+        self.subscribers_index = 2 # индекс html-элемента, отвечающего за выпадающий список подписчиков
+        self.subscribings_index = 3 # индекс html-элемента, отвечающего за выпадающий список подписок
 
     def load_page(self, url: str):
         """Переходит на страницу по переданному url-адресу
@@ -257,6 +260,79 @@ class InstagramBot():
         with open('all_liked_posts.txt', 'w') as f:
             f.write(lines)
 
+    def get_iteration_count(self, html_el_index: int):
+        """Возвращет кол-во итераций
+
+        Args:
+            html_el_index (int): индекс html-элемента подписчиков/подписок в зависимости от места, из которого был вызван метод
+
+        Returns:
+            int: кол-во итераций для прокрутки списка подписок/подписчиков
+        """
+        user_count = self.driver.find_element_by_xpath(f"/html/body/div[1]/section/main/div/header/section/ul/li[{html_el_index}]/a/div/span").get_attribute('title')
+        iteration_count = int(user_count.replace(',', '').replace(' ', '')) // 12 # 12 - число подгружаемых подписчиков/подписок
+        
+        return iteration_count
+
+    def get_users_list(self, html_el_index: int):
+        """Возвращает html-элемент, представляющий собой список пользователей
+
+        Args:
+            html_el_index (int): индекс html-элемента подписчиков/подписок в зависимости от места, из которого был вызван метод
+        
+        Returns:
+            WebElement: объект selenium, представляющий собой список пользователей
+        """
+         # выпадающее окно с пользователями
+        users = self.driver.find_element_by_xpath(f"/html/body/div[1]/section/main/div/header/section/ul/li[{html_el_index}]/a/div")
+        users.click()
+        time.sleep(2)
+
+        users_list = self.driver.find_element_by_xpath(f"/html/body/div[6]/div/div/div/div[{html_el_index}]") # непосредственно сам элемент-список пользователей, для его дальнейшей прокрутки
+        
+        return users_list
+
+    def get_users_elements(self, html_el_index: int):
+        """Получает информацию, необходимую для дальнейшей работы с пользователями
+
+        Args:
+            html_el_index (int): индекс html-элемента подписчиков/подписок в зависимости от места, из которого был вызван метод
+
+        Returns:
+            tuple: кол-во итераций, html-элемент, представляющий собой список пользователей
+        """
+
+        iteration_count = self.get_iteration_count(html_el_index)
+        users_list = self.get_users_list(html_el_index)
+
+        return iteration_count, users_list
+
+    def get_users(self, iteration_count: int, users_list: WebElement):
+        """Возвращает пользователей, которые являются либо подписчиками, либо подписками
+
+        Args:
+            iteration_count (int): кол-во итераций для прокрутки списка пользователей
+            users_list (WebElement): html-элемент-список пользователей, который нужно прокручивать для получения очередных пользователей
+            
+        Returns:
+            list: список url-адресов пользователей
+        """
+        users = []
+
+        for _ in range(iteration_count+1):
+            users_hrefs = self.driver.find_elements_by_xpath('//div/span/a')
+            time.sleep(1)
+
+            # добавляем очередных пользователей в список всех пользователей
+            for user_href in users_hrefs[1:]:
+                users.append(user_href.get_attribute('href'))
+
+            # прокручиваем список пользователей дальше
+            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", users_list)
+            time.sleep(2)
+
+        return users
+
     def subscribe_to_users(self, user: str):
         """Подписывается на пользователей, которые находятся в подписчиках у переданного пользователя
 
@@ -276,31 +352,7 @@ class InstagramBot():
             username = user.split('/')[-2] # получаем имя пользователя из Url-адреса
             print(f'Вы уже подписаны на {username}')
 
-        # выпадающий список подписчиков пользователя
-        user_subscribers = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div")
-        user_subscribers.click()
-        time.sleep(2)
-
-        # получаем кол-во итераций
-        user_subscribers_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div/span").get_attribute('title')
-        iteration_count = int(user_subscribers_count.replace(',', '').replace(' ', '')) // 12 # 12 - число подгружаемых подписчиков
-
-        user_subscribers_urls = []
-        subscribers_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[2]") # окно с подписчиками пользователя
-
-        for _ in range(iteration_count+1):
-            user_subscribers_hrefs = self.driver.find_elements_by_xpath('//div/span/a')
-            time.sleep(1)
-
-            # добавляем очередных подписчиков в список всех подписчиков
-            for user_subscriber in user_subscribers_hrefs[1:]:
-                user_subscribers_urls.append(user_subscriber.get_attribute('href'))
-
-            # прокручиваем список подписчиков дальше
-            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribers_list)
-            time.sleep(2)
-
-        user_subscribers_urls = list(set(user_subscribers_urls)) # оставляем только уникальные значения
+        user_subscribers_urls = list(set(self.get_users(*self.get_users_elements(self.subscribers_index))))
 
         # подписка на найденных пользователей
         for user_subscriber in user_subscribers_urls:
@@ -338,17 +390,14 @@ class InstagramBot():
         """
         self.load_page(user) # заходим на странцу пользователя
 
-        subscribing_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div/span").text # кол-во подписок
-        iteration_count = int(subscribing_count) // 12 # 12 - число подгружаемых подписчиков
+        iteration_count = self.get_iteration_count(self.subscribings_index)
 
         # производится отписка от первых 12 найденных подписок
         # далее перезагружаем страницу и отписываемся от следующих 12 подписок
         for _ in range(iteration_count+1):
             self.load_page(user) # перегружаем страницу для генерации следующих подписок
             
-            subscribings = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div") # ищем кнопку, вызывающую меню подписок
-            subscribings.click() # кликаем
-            time.sleep(3) # подгружаем подписки
+            self.get_users_list(self.subscribings_index)
 
             subscribings = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # находим аккаунты подписок
 
@@ -375,57 +424,18 @@ class InstagramBot():
         """
         self.load_page(user)
 
-        subscribers_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div/span").get_attribute('title')
-        iteration_count = int(subscribers_count) // 12
-
-        subscribers = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/div") # выпадающий список подписчиков
-        subscribers.click()
-        time.sleep(3)
-
-        subscribers_list = self.driver.find_element_by_xpath('/html/body/div[6]/div/div/div/div[2]') # непосредственно сам список подписчиков как html-элемент, для его дальнейшей прокрутики для сбора всех подписчиков
-        subscribers = []
-
-        for _ in range(iteration_count+1):
-            subscribers = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # забираем всех подписчиков на текущей итерации прокрутки списка
-            for subscriber in subscribers:
-                username = subscriber.find_element_by_class_name('FPmhX')
-                subscribers.append(username.text)
-            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribers_list) # прокрутка списка подписчиков
-            time.sleep(2)
-
-        subscribers = list(set(subscribers)) # убираем дубликаты
+        user_subscribers_urls = set(self.get_users(*self.get_users_elements(self.subscribers_index)))
 
         self.load_page(user) # перегружаем страницу
 
-        subscribing_count = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div/span").text
-        iteration_count = int(subscribing_count) // 12
+        user_subscribings_urls = set(self.get_users(*self.get_users_elements(self.subscribings_index)))
 
-        subscribings = self.driver.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[3]/a/div") # выпадающий список подписок
-        subscribings.click()
-        time.sleep(3)
+        unsubscribed_users_urls = list(user_subscribers_urls - user_subscribings_urls) # выполняем вычитание множеств. Таким образом, получаем неподписанных в ответ пользователей
 
-        subscribing_list = self.driver.find_element_by_xpath("/html/body/div[6]/div/div/div/div[3]") # неподсредстенно сам список подписок для его дальнейшей прокрутки
-        unsubscribed_users = []
+        for unsubscribed_user_url in unsubscribed_users_urls:
+            username = unsubscribed_user_url.split('/')[-2]
 
-        for _ in range(iteration_count+1):
-            subscribings = self.driver.find_elements_by_xpath("/html/body/div[6]/div/div/div/div[3]/ul/div/li") # подписки на текущей итерации
-            time.sleep(2)
-            for subscribing in subscribings:
-                subscribing_info = subscribing.find_element_by_xpath("//span/a")
-                username = subscribing_info.get_attribute('title')
-                if username not in subscribers:
-                    unsubscribed_users.append(subscribing_info.get_attribute('href'))
-
-            self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", subscribing_list) # прокрутка списка подписок
-            time.sleep(2)
-
-
-        unsubscribed_users = list(set(unsubscribed_users)) # убираем дубликаты
-
-        for unsubscribed_user in unsubscribed_users:
-            username = unsubscribed_user.split('/')[-2]
-
-            self.load_page(unsubscribed_user)
+            self.load_page(unsubscribed_user_url)
 
             print(f'{username} не подписался на нас в ответ. Отписываемся от него...')
 
