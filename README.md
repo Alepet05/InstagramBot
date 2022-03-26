@@ -1,8 +1,8 @@
 # InstagramBot
 Бот для автоматизации действий в Instagram
 # Установка
-# Склонируйте репозиторий командой git clone "https://github.com/u5er-name/instagram_bot.git"
-# Выполните команду "pip install -r requirements.txt"
+* Склонируйте репозиторий командой git clone "https://github.com/u5er-name/instagram_bot.git"
+* Выполните команду "pip install -r requirements.txt"
 # Настройка
 В файле config.py впишите свои имя пользователя и пароль
 # Использование
