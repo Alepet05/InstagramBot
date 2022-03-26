@@ -1,4 +1,5 @@
 import os
+import config
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -501,6 +502,7 @@ class InstagramBot():
 def main():
     driver = webdriver.Firefox('chromedriver')
     bot = InstagramBot(driver)
+    bot.login(config.USERNAME, config.PASSWORD)
     bot.close()
 
 if __name__ == '__main__':
