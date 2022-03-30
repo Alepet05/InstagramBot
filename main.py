@@ -506,13 +506,14 @@ class InstagramBot():
 
     def close(self):
         """Закрывает соединение"""
-        self.driver.close()
-        self.driver.quit()
+        self.driver.close() # закрывает тольку 1 вкладку
+        self.driver.quit() # полностью выходит из браузера
 
 def main():
-    driver = webdriver.Firefox('chromedriver')
+    driver = webdriver.Chrome(executable_path='chromedriver\\chromedriver.exe')
     bot = InstagramBot(driver)
     bot.login(config.USERNAME, config.PASSWORD)
+    # используйте здесь нужные методы
     bot.close()
 
 if __name__ == '__main__':
